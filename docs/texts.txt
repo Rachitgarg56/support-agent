@@ -1,0 +1,64 @@
+SECTION 1 — APOLLO 11 (1969): FIRST MOON LANDING
+Apollo 11 was the spaceflight that first landed humans on the Moon. Launched by a Saturn V rocket on 16 July 1969, the mission carried three astronauts: Neil A. Armstrong (commander), Edwin E. “Buzz” Aldrin (lunar module pilot), and Michael Collins (command module pilot). On 20 July 1969, the lunar module Eagle separated from the command module Columbia and descended to Mare Tranquillitatis (the Sea of Tranquility). Armstrong then reported, “The Eagle has landed.”
+Armstrong became the first human to step onto the lunar surface at 02:56 UTC on 21 July 1969, followed by Aldrin about 19 minutes later. They deployed experiments, collected 21.6 kilograms of rock and soil, and planted the U.S. flag. Collins remained in lunar orbit, maintaining systems and awaiting their return.
+After roughly 21 hours on the lunar surface, Eagle lifted off and rejoined Columbia. The crew returned to Earth and splashed down in the Pacific Ocean on 24 July 1969. The mission demonstrated the feasibility of crewed lunar exploration, achieved a key objective of the 1961 U.S. commitment “before this decade is out,” and inspired generations of scientists and engineers.
+
+---
+SECTION 2 — MAGNA CARTA (1215): A CHARTER OF LIMITS
+In June 1215, English barons compelled King John to accept Magna Carta (“Great Charter”) at Runnymede. The charter sought to limit royal power and secure certain legal protections. While many clauses dealt with feudal and tax disputes, several ideas became enduring principles.
+Key ideas widely remembered today include: (1) the ruler is subject to the law; (2) no free person may be deprived of liberty or property without due process; and (3) certain taxes require “common counsel,” a seed of later parliamentary consent. Though annulled and reissued multiple times in the 13th century, select clauses were confirmed in later centuries and became symbols of constitutional government.
+
+---
+SECTION 3 — THE BLACK DEATH (1347–1351): A PANDEMIC TRANSFORMED EUROPE
+The Black Death was an outbreak of bubonic and pneumonic plague that reached Europe in 1347 and persisted in waves through the mid‑14th century. Carried by fleas on rodents and accelerated by trade routes, the disease killed an estimated 25–50 million people in Europe—between a third and a half of the population.
+Consequences included severe labor shortages, rising wages for surviving workers, stresses on feudal obligations, and social unrest. Religious and cultural responses varied: some groups sought penitence and reform; others scapegoated minorities. Over the longer term, the demographic shock altered economic structures and contributed to changes in land use, urban life, and public health practices.
+
+---
+SECTION 4 — THE SEVEN WONDERS OF THE ANCIENT WORLD
+The traditional list of ancient wonders—compiled by Hellenistic writers—includes:
+1) Great Pyramid of Giza (Egypt): The only wonder still largely intact; built as a tomb for Pharaoh Khufu (c. 26th century BCE).
+2) Hanging Gardens of Babylon (Mesopotamia): Legendary terraced gardens; existence and location remain debated by scholars.
+3) Statue of Zeus at Olympia (Greece): A monumental chryselephantine statue by Phidias, destroyed in late antiquity.
+4) Temple of Artemis at Ephesus (Anatolia): A grand temple rebuilt several times; its final version was burned in 356 BCE and later destroyed.
+5) Mausoleum at Halicarnassus (Anatolia): The ornate tomb of Mausolus; damaged by earthquakes and dismantled over centuries.
+6) Colossus of Rhodes (Greece): A giant bronze statue toppled by an earthquake in 226 BCE.
+7) Lighthouse of Alexandria (Egypt): A tall guiding beacon on the island of Pharos; damaged by earthquakes and gone by the Middle Ages.
+The list reflects Hellenistic tastes and travel, focusing on the eastern Mediterranean. Other civilizations had their own masterpieces not included in this canon.
+
+---
+SECTION 5 — BASICS OF PHOTOSYNTHESIS
+Photosynthesis is the process by which plants, algae, and many bacteria convert light energy into chemical energy stored in sugars. In plants, it occurs in chloroplasts, primarily within leaf cells. Chlorophyll pigments absorb light—especially in the blue and red wavelengths—and power a series of reactions that produce glucose and oxygen from carbon dioxide and water.
+A simplified overall equation is:
+6 CO₂ + 6 H₂O + light energy → C₆H₁₂O₆ + 6 O₂
+Light‑dependent reactions generate energy‑rich molecules (ATP and NADPH) and split water, releasing oxygen. The Calvin cycle then uses ATP and NADPH to fix CO₂ into three‑carbon molecules and ultimately glucose. Photosynthesis underpins most food webs and moderates Earth’s atmosphere by producing oxygen.
+
+---
+SECTION 6 — “OZYMANDIAS” (1818) BY PERCY BYSSHE SHELLEY — PUBLIC DOMAIN
+I met a traveller from an antique land,
+Who said—“Two vast and trunkless legs of stone
+Stand in the desert. Near them, on the sand,
+Half sunk, a shattered visage lies, whose frown,
+And wrinkled lip, and sneer of cold command,
+Tell that its sculptor well those passions read
+Which yet survive, stamped on these lifeless things,
+The hand that mocked them, and the heart that fed;
+And on the pedestal, these words appear:
+My name is Ozymandias, King of Kings;
+Look on my Works, ye Mighty, and despair!
+Nothing beside remains. Round the decay
+Of that colossal Wreck, boundless and bare
+The lone and level sands stretch far away.”
+
+---
+SECTION 7 — TIMELINE: MILESTONES IN COMPUTING
+• 1837 — Charles Babbage proposes the Analytical Engine, a general‑purpose mechanical computer (never completed).
+• 1843 — Ada Lovelace publishes notes describing algorithms for the Analytical Engine; she is often called the first computer programmer.
+• 1936 — Alan Turing formalizes the concept of computation with the Turing machine and the Entscheidungsproblem.
+• 1947 — The transistor is demonstrated at Bell Labs, enabling modern electronics.
+• 1971 — Intel releases the 4004 microprocessor.
+• 1981 — IBM launches the IBM PC, popularizing personal computing in business.
+• 1989 — Tim Berners‑Lee proposes the World Wide Web; the first website goes live in 1991.
+• 2007 — The first iPhone accelerates the shift to mobile computing.
+• 2012 — Deep learning breakthroughs (e.g., ImageNet) dramatically advance computer vision.
+• 2020s — Generative AI models enable text, image, audio, and code synthesis at scale.
+
