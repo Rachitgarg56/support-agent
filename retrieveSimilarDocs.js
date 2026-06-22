@@ -1,4 +1,4 @@
-import {SIMILARITY_MATCH_COUNT, EMBEDDING_MODEL_NAME} from "./constants.js"
+import {SIMILARITY_MATCH_COUNT, EMBEDDING_MODEL_NAME, MATCH_THRESHOLD} from "./constants.js"
 import {googleGenAI, supabase} from "./config.js"
 import { embed } from 'ai';
 
@@ -21,6 +21,7 @@ export async function retrieveSimilarDocs(query){
     {
       query_embedding: embedding,
       match_count: SIMILARITY_MATCH_COUNT,
+      match_threshold: MATCH_THRESHOLD,
     }
   );
 
