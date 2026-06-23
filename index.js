@@ -32,7 +32,8 @@ async function main(query){
   // });
 
   // console.log(text);
-  basicStruturedOutput(query);
+  // basicStruturedOutput(query);
+  classificationStructuredOutput();
 }
 
 async function basicStruturedOutput(query) {
@@ -56,6 +57,21 @@ async function basicStruturedOutput(query) {
   });
 
   console.log(JSON.stringify(result.output.recipe, null, 2));
+}
+
+async function classificationStructuredOutput() {
+  const result = await generateText({
+    model: googleGenAI(ANSWERING_MODEL),
+    output: Output.object({
+      schema: z.object({
+        sentiment: z.string().describe("Understand the sentiment of the user and explain in 1 statement."),
+        satisfaction: z.enum(["positive", "negative"]).describe("Sentiment of the customer review."),     
+      }),
+    }),
+    prompt: "I am not really satified with the testimonials on your website about the product!",
+  });
+
+  console.log(JSON.stringify(result.output, null, 2)); 
 }
 
 main(query)
