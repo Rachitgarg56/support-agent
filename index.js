@@ -1,7 +1,7 @@
 import {retrieveSimilarDocs} from "./retrieveSimilarDocs.js"
 import {getRagPrompt, combineDocuments} from "./utils.js"
 import {ANSWERING_MODEL} from "./constants.js"
-import { generateText, Output } from "ai"
+import { generateText, Output, stepCountIs, tool } from "ai"
 import {googleGenAI} from "./config.js"
 import { ingestDocuments } from "./upsertDocuments.js"
 import { z } from 'zod';
@@ -33,7 +33,38 @@ async function main(query){
 
   // console.log(text);
   // basicStruturedOutput(query);
-  classificationStructuredOutput();
+  // classificationStructuredOutput();
+  generateResponseFromToolCalls();
+}
+
+async function generateResponseFromToolCalls() {
+  const NUMBER_OF_STEPS = 3;
+
+  const getCurrentTemp = tool({
+    description: "Get current temperature of location",
+    inputSchema: z.object({
+      location: z.string(),
+    }),
+    execute: async ({location}) => ({location, temperature: 28}),
+  });
+
+  const getCityAttractions = tool({
+    description: "Get attractions of city",
+    inputSchema: z.object({
+      city: z.string(),
+    }),
+    execute: async ({city}) => ({city , attractions: ["Taj Mahal", "Yamuna River"]}),
+  })
+
+  const { text, toolResults, steps } = await generateText({
+    model: googleGenAI(ANSWERING_MODEL),
+    tools: { getCurrentTemp, getCityAttractions },
+    stopWhen: stepCountIs(NUMBER_OF_STEPS),
+    prompt: "What is the current temperature in Agra and name some of the places of attraction.",
+  });
+
+  console.log(text)
+  console.log(JSON.stringify(toolResults, null, 2));
 }
 
 async function basicStruturedOutput(query) {
