@@ -16,7 +16,7 @@ export async function retrieveSimilarDocs(query){
   });
 
   //retrieve similar docs from supabase based on embeddings
-  const { data: documents, error: matchError } = await supabase.rpc(
+  const { data: documents, error: matchError } = await supabase.rpc( // rpc - remote proceure call
       'match_documents',
     {
       query_embedding: embedding,

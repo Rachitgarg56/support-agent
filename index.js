@@ -1,40 +1,46 @@
 import {retrieveSimilarDocs} from "./retrieveSimilarDocs.js"
 import {getRagPrompt, combineDocuments} from "./utils.js"
-import {ANSWERING_MODEL} from "./constants.js"
+import {ANSWERING_MODEL, CLASSIFICATION_MODEL, KNOWLEDGE_BASE_DESCRIPTION} from "./constants.js"
 import { generateText, Output, stepCountIs, tool } from "ai"
 import {googleGenAI} from "./config.js"
 import { ingestDocuments } from "./upsertDocuments.js"
 import { z } from 'zod';
+import { classifyAndRetrieve } from "./agenticRetrieval.js"
 
-const query = "Generate a lasagna recipe."
+const query = "Discord details for scrimba?"
 
 async function main(query){
-  // // split text into chunks, embed ans store into vector db
-  // // await ingestDocuments(); 
+  
+  /* split text into chunks, embed ans store into vector db */
+  // await ingestDocuments(); 
 
-  // //retrieve docs that contain content relevant to the query
-  // const retrievedDocs = await retrieveSimilarDocs(query)
-  // // console.log(retrievedDocs)
+  /* retrieve docs that contain content relevant to the query */
+  // await basicRetrieval(query)
 
-  // //create a prompt including context docs to send to the model
+  /* classify user prompt to decide whether to initiate retrieval */
+  const response = await classifyAndRetrieve(query)
 
-  // const contextString = combineDocuments(retrievedDocs);
+  console.log(`\n\Generated answer: ${response.answer}\n\nRetrieval docs: ${response.sources ? JSON.stringify(response.sources, null, 2): null}`);
 
-  // //create a prompt including context docs to send to the model
-  // const prompt = getRagPrompt(contextString, query)
+}
 
-  // // console.log(`Prompt: ${prompt}`)
+async function basicRetrieval(query) {
+  // retrieve docs that contain content relevant to the query 
+  const docs = await retrieveSimilarDocs(query);
+  // console.log(docs);
 
-  // // //send prompt to model to generate response
-  // const { text } = await generateText({
-  //   model: googleGenAI(ANSWERING_MODEL),
-  //   prompt: prompt
-  // });
+  const contextString = combineDocuments(docs);
 
-  // console.log(text);
-  // basicStruturedOutput(query);
-  // classificationStructuredOutput();
-  generateResponseFromToolCalls();
+  // create a prompt including context docs to send to the model
+  const finalPrompt = getRagPrompt(contextString, query);
+
+  //send prompt to model to generate response
+  const { text } = await generateText({
+    model: googleGenAI(ANSWERING_MODEL),
+    prompt: finalPrompt
+  });
+
+  console.log(text); 
 }
 
 async function generateResponseFromToolCalls() {

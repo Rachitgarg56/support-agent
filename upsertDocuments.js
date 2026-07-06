@@ -72,43 +72,27 @@ export async function ingestDocuments() {
       const fileContent = fs.readFileSync(filePath, "utf-8");
       console.log(` - Read ${fileContent.length} characters.`);
 
-      // split the large text into chunks
-      const chunks = simpleTextSplitter(fileContent, CHUNK_SIZE, CHUNK_OVERLAP);
-
-      if (chunks.length === 0) {
-        console.log(` - No chunks generate for this file.`);
-        continue;
-      }
-
-      /**
-       * Embed each chunk
-       */
-      console.log(`Embedding ${chunks.length} chunks of text`);
-      let fileChunkCount = 0;
-      for (let chunk of chunks) {
-        fileChunkCount++;
-        try {
-          const { embedding } = await embed({
-            model: googleGenAI.embedding(EMBEDDING_MODEL_NAME),
-            value: chunk,
-            providerOptions: {
-              google: {
-                outputDimensionality: 1536,
-              },
+      try {
+        const { embedding } = await embed({
+          model: googleGenAI.embedding(EMBEDDING_MODEL_NAME),
+          value: fileContent,
+          providerOptions: {
+            google: {
+              outputDimensionality: 1536,
             },
-          });
-          // *** Add metadata with source filename ***
-          allDocumentsToInsert.push({
-            content: chunk,
-            embedding: embedding,
-            metadata: { source: filename }, // Store filename here
-          });
-          console.log(`- Embedded content from ${filename}`);
-        } catch (embedError) {
-          console.error(
-            `   - Failed to embed content from ${filename}: ${embedError.message}. Skipping chunk.`,
-          );
-        }
+          },
+        });
+        // *** Add metadata with source filename ***
+        allDocumentsToInsert.push({
+          content: fileContent,
+          embedding: embedding,
+          metadata: { source: filename }, // Store filename here
+        });
+        console.log(`- Embedded content from ${filename}`);
+      } catch (embedError) {
+        console.error(
+          `   - Failed to embed content from ${filename}: ${embedError.message}. Skipping chunk.`,
+        );
       }
     }
 
