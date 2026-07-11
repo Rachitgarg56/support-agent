@@ -1,25 +1,13 @@
-import { generateText } from 'ai';
-import { googleGenAI } from './config.js';
+import {webSearchRetrievalAgent} from "./webSearchRetrievalAgent.js";
 
-const query = 'What is the latest model of openai?';
-const llmmModel = 'gemini-2.5-flash';
+const retrievalQuery = "How do I access the scrimba discord?"
+const webSearchQyery = "What is the latest openai large language model?"
 
 async function main(query) {
-  await webSearch(query);
+  const response = await webSearchRetrievalAgent(query);
+
+  console.log(`\n\nGenerated answer: ${response.answer}\n\nRetrieval docs: ${response.sources ?
+    JSON.stringify(response.sources, null, 2): null}`);
 }
 
-main(query);
-
-async function webSearch(query) {
-  const { text, sources } = await generateText({
-    model: googleGenAI(llmmModel),
-    prompt: query,
-    tools: {
-      google_search: googleGenAI.tools.googleSearch({}),
-    },
-    maxSteps: 3, 
-  });
- 
-  console.log('Text', text + '\n\n');
-  console.log('Sources', sources);
-}
+main(retrievalQuery);
