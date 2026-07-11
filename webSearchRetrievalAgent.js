@@ -1,6 +1,7 @@
-import { generateText, stepCountIs, tool } from "ai";
-import { KNOWLEDGE_BASE_DESCRIPTION, ANSWERING_MODEL } from "./constants.js";
-import {getRetrievalWebSearchPrompt} from "./prompts.js";
+import { generateText, generateObject, stepCountIs, tool } from "ai";
+import { z } from "zod";
+import { KNOWLEDGE_BASE_DESCRIPTION, ANSWERING_MODEL, CLASSIFICATION_MODEL } from "./constants.js";
+import { getRetrievalWebSearchPrompt, getRoutingPrompt } from "./prompts.js";
 import { googleGenAI } from "./config.js";
 import { knowledgeBaseTool } from "./knowledgeBaseTool.js";
 
@@ -14,15 +15,26 @@ const MAX_TOOL_STEPS = 3; // Allow LLM to call tool and generate response
 export async function webSearchRetrievalAgent(question) {
     console.log(`[ToolBased] Received question: ${question}`);
 
-    // Define the tools available to the model
-    const tools = {
-        knowledgeBaseSearch: knowledgeBaseTool,
-        // google's built-in web search tool
-        web_search_preview: googleGenAI.tools.googleSearch({}),
-    };
-
     try {
-        // Single call to generateText, letting the LLM decide on tool use
+        console.log(`[ToolBased] Routing query...`);
+        const { object: routingDecision } = await generateObject({
+            model: googleGenAI(CLASSIFICATION_MODEL),
+            schema: z.object({
+                source: z.enum(["KB", "WEB"]).describe("The data source to use for answering the query.")
+            }),
+            system: getRoutingPrompt(KNOWLEDGE_BASE_DESCRIPTION),
+            prompt: question,
+        });
+
+        const selectedSource = routingDecision.source;
+        console.log(`[ToolBased] Routing decision: ${selectedSource}`);
+
+        // Define the tools available to the model based on routing
+        const tools = selectedSource === "KB" 
+            ? { knowledgeBaseSearch: knowledgeBaseTool }
+            : { web_search_preview: googleGenAI.tools.googleSearch({}) };
+
+        // Single call to generateText, with strictly one tool
         const result = await generateText({
             model: googleGenAI(TOOL_CALLING_MODEL),
             tools: tools,
