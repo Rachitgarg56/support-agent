@@ -1,97 +1,79 @@
-<img width="1680" height="883" alt="image" src="https://github.com/user-attachments/assets/b54e2adb-defb-48e1-af79-cb8404538d4b" />
+# Papertrail — Document Q&A Demo
 
-# 🤖 AI Support Agent
+A full-stack, workspace-isolated retrieval-augmented generation (RAG) application built for a public portfolio. Visitors unlock the demo with a shared code, upload their own PDF/TXT/Markdown documents, and ask independently grounded questions with citations.
 
-An intelligent AI-powered Support Agent built with **Next.js**, **Vercel AI SDK**, and **TypeScript** that answers user queries using Retrieval-Augmented Generation (RAG) and real-time web search.
+## What it includes
 
-## ✨ Features
+- Next.js App Router, React, TypeScript, Tailwind CSS, and Vercel AI SDK UI
+- Gemini 2.5 Flash-Lite answers and `gemini-embedding-001` embeddings
+- Private Supabase Storage and pgvector similarity search
+- Anonymous workspaces isolated inside the vector-search function
+- Direct signed uploads, page-aware PDF extraction, and streamed citations
+- Explicit Google Search fallback only after document retrieval has no match
+- Atomic per-workspace, per-IP, and global daily free-tier quotas
+- No server-side chat history
 
-- 💬 Conversational AI chat interface
-- 🔍 Intelligent routing between knowledge base and web search
-- 📚 Retrieval-Augmented Generation (RAG)
-- 🌐 Real-time web search for up-to-date information
-- ⚡ Streaming AI responses
-- 🧠 Context-aware conversations
-- 📱 Responsive UI
-- 🎨 Modern chat experience
+## Local setup
 
----
+1. Create a Supabase project and run [`created_tables.sql`](./created_tables.sql) in its SQL editor.
+2. Copy `.env.example` to `.env.local` and fill every required value. Generate long random strings for `COOKIE_SIGNING_SECRET`, `RATE_LIMIT_SALT`, and `CRON_SECRET`.
+3. Keep `SUPABASE_SERVICE_ROLE_KEY`, `GOOGLE_GENERATIVE_AI_API_KEY`, `DEMO_ACCESS_CODE`, and all signing secrets server-only.
+4. Install and start the app:
 
-## 🏗️ Architecture
+   ```bash
+   npm ci --legacy-peer-deps
+   npm run dev
+   ```
 
-The agent follows a hybrid retrieval strategy:
+Open `http://localhost:3000`, enter your demo code, and upload a readable document.
 
+## Environment variables
+
+| Variable | Exposure | Purpose |
+| --- | --- | --- |
+| `GOOGLE_GENERATIVE_AI_API_KEY` | Server | Gemini generation and embeddings |
+| `SUPABASE_URL` | Server | Supabase project URL |
+| `SUPABASE_SERVICE_ROLE_KEY` | Server | Storage and database administration |
+| `NEXT_PUBLIC_SUPABASE_URL` | Browser | Direct signed uploads |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Browser | Direct signed uploads; table access remains denied |
+| `DEMO_ENABLED` | Server | Emergency live-demo switch |
+| `DEMO_ACCESS_CODE` | Server | Shared résumé access code |
+| `COOKIE_SIGNING_SECRET` | Server | Signs access cookies |
+| `RATE_LIMIT_SALT` | Server | HMAC-hashes visitor IPs |
+| `CRON_SECRET` | Server | Protects the cleanup route |
+| `NEXT_PUBLIC_REPOSITORY_URL` | Browser | Optional source-code link |
+| `NEXT_PUBLIC_DEMO_VIDEO_URL` | Browser | Optional recorded fallback link |
+
+The app intentionally does not inspect or send raw PDF files to Gemini. It extracts text on the server and sends only selected chunks to the answer model. Free-tier Google usage may still be used to improve Google products, so the UI warns visitors not to upload confidential material.
+
+## Limits
+
+On Vercel, the portfolio profile allows three files per workspace, 5 MB per file, 100 PDF pages, 10 questions per workspace per day, and three web fallbacks. Local development uses higher limits. The global quota functions reject requests before invoking Gemini.
+
+Text-bearing PDFs are supported. OCR, encrypted PDFs, DOCX, spreadsheets, authentication, durable background jobs, and persisted conversations are intentionally out of scope.
+
+## Verification
+
+```bash
+npm run typecheck
+npm run lint
+npm test
+npm run build
 ```
-                User Query
-                     │
-                     ▼
-              AI Decision Layer
-                     │
-         ┌───────────┴───────────┐
-         │                       │
- Need Internal Knowledge?      General Query
-         │                       │
-        Yes                     No
-         │                       │
-         ▼                       ▼
-   Vector Database         LLM Response
-         │
-         ▼
-Need Real-Time Information?
-         │
-    ┌────┴────┐
-    │         │
-   Yes       No
-    │         │
-    ▼         ▼
-Web Search   Vector Search
-    │         │
-    └────┬────┘
-         ▼
-      AI Response
+
+Playwright includes a browser smoke test for the protected entry screen:
+
+```bash
+npx playwright install chromium
+npm run test:e2e
 ```
 
----
+CI runs type-checking, linting, unit and SQL-contract tests, the browser smoke test, and a production build. A full upload-to-citation journey and multi-user isolation still require a configured Supabase project and Gemini credentials; validate those against your deployed environment before sharing the link.
 
-## 🛠️ Tech Stack
+## Deployment
 
-### Frontend
-- Next.js
-- React
-- TypeScript
-- Tailwind CSS
-
-### AI
-- Vercel AI SDK
-- Google Gemini 
-- Tool Calling
-- Streaming Responses
-
-### Retrieval
-- RAG
-- supasbase pg vector database
-- Semantic Search
-
-### Backend
-- Node.js
-
----
-
-## 🔄 Agent Workflow
-
-1. User submits a query.
-2. The AI determines whether retrieval is required.
-3. If no retrieval is needed, the LLM responds directly.
-4. If retrieval is required:
-   - Uses Vector Search for internal knowledge.
-   - Uses Web Search for real-time information.
-5. Retrieved context is sent back to the LLM.
-6. The AI generates a grounded response.
-
-
-## 👨‍💻 Author
-
-**Rachit Garg**
-
-- LinkedIn: https://linkedin.com/in/rachitgarg56
-- GitHub: https://github.com/Rachitgarg56
+- Deploy the repository to Vercel using the Hobby plan and configure all environment variables.
+- Set `DEMO_ACCESS_CODE` to the code shared beside the project link on your résumé.
+- Keep the Gemini project on its free tier with billing disabled if zero spend is required.
+- The daily Vercel cron removes expired workspaces, abandoned uploads, and old quota rows.
+- Supabase Free projects can pause after inactivity; resume and smoke-test the project before interviews.

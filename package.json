@@ -1,20 +1,43 @@
 {
   "name": "support-agent",
-  "version": "1.0.0",
+  "version": "2.0.0",
+  "private": true,
   "type": "module",
-  "description": "Built a support agent with Vercel AI SDK",
-  "main": "index.js",
+  "description": "A zero-cost, workspace-isolated document Q&A portfolio demo",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node index.js"
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "playwright test"
   },
   "author": "rachitgarg",
   "license": "ISC",
   "dependencies": {
-    "@ai-sdk/google": "^3.0.83",
-    "@supabase/supabase-js": "^2.108.2",
-    "ai": "^6.0.208",
-    "dotenv": "^17.4.2",
-    "zod": "^4.4.3"
+    "@ai-sdk/google": "3.0.83",
+    "@ai-sdk/react": "3.0.210",
+    "@supabase/supabase-js": "2.108.2",
+    "ai": "6.0.208",
+    "next": "16.2.10",
+    "react": "19.2.4",
+    "react-dom": "19.2.4",
+    "unpdf": "1.4.0",
+    "zod": "4.4.3"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.58.2",
+    "@tailwindcss/postcss": "4.1.18",
+    "@types/node": "22.19.15",
+    "@types/react": "19.2.14",
+    "@types/react-dom": "19.2.3",
+    "eslint": "9.39.4",
+    "eslint-config-next": "16.2.10",
+    "jsdom": "28.1.0",
+    "tailwindcss": "4.1.18",
+    "typescript": "5.9.3",
+    "vitest": "4.1.0"
   }
 }

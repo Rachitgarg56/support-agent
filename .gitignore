@@ -1,5 +1,10 @@
 # Dependencies
 node_modules/
+.next/
+playwright-report/
+test-results/
+coverage/
+*.tsbuildinfo
 
 # Environment variables
 .env
@@ -16,6 +21,7 @@ yarn-error.log*
 # Build output
 dist/
 build/
+.vercel/
 
 # OS files
 .DS_Store
