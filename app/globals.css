@@ -30,6 +30,15 @@ svg { width: 1.25rem; height: 1.25rem; }
 .eyebrow { margin: 1.5rem 0 .55rem; letter-spacing: .15em; font-size: .68rem; font-weight: 800; color: #657169; }
 .access-card h1 { font-family: Georgia, serif; font-weight: 500; font-size: clamp(2.4rem, 7vw, 4rem); letter-spacing: -.045em; line-height: .98; margin: 0; }
 .access-copy { color: var(--muted); line-height: 1.65; max-width: 44ch; margin: 1.2rem 0 2rem; }
+.demo-access-panel { margin-bottom: 1.6rem; padding: 1rem; border: 1px solid #cddac5; border-radius: 14px; background: #f0f6e9; }
+.demo-access-panel h2 { margin: 0; color: var(--green); font-size: .85rem; font-weight: 750; }
+.demo-access-panel p { margin: .35rem 0 .85rem; color: var(--muted); font-size: .75rem; line-height: 1.5; }
+.demo-code-row { display: flex; align-items: center; gap: .6rem; min-width: 0; }
+.demo-code-row code { flex: 1; min-width: 0; overflow-wrap: anywhere; user-select: text; color: var(--ink); font-size: .84rem; font-weight: 700; }
+.demo-code-row button { flex: none; border: 1px solid #a8c6a8; border-radius: 8px; padding: .45rem .7rem; background: white; color: var(--green); font-size: .72rem; font-weight: 700; cursor: pointer; }
+.demo-code-row button:hover { background: #e2efd8; }
+.demo-code-row button:focus-visible { outline: 3px solid var(--green); outline-offset: 3px; }
+.copy-status { display: block; min-height: 1.1rem; margin-top: .4rem; color: var(--green); font-size: .7rem; }
 .access-form label { display: block; font-size: .78rem; font-weight: 700; margin-bottom: .55rem; }
 .access-input-row { display: flex; gap: .5rem; }
 .access-input-row input { min-width: 0; flex: 1; border: 1px solid var(--line); background: white; border-radius: 12px; padding: .9rem 1rem; outline: none; }

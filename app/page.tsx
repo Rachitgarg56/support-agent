@@ -17,6 +17,7 @@ type ApiFailure = { error?: { code?: string; message?: string } };
 
 const repositoryUrl = process.env.NEXT_PUBLIC_REPOSITORY_URL || "https://github.com/Rachitgarg56/support-agent";
 const videoUrl = process.env.NEXT_PUBLIC_DEMO_VIDEO_URL || "#";
+const publicDemoCode = "thisisdemoaccesscode";
 
 async function readResponse<T>(response: Response): Promise<T> {
   const body = (await response.json().catch(() => ({}))) as T & ApiFailure;
@@ -55,6 +56,17 @@ function AccessScreen({ unavailable, message, onUnlock }: { unavailable: boolean
   const [code, setCode] = useState("");
   const [error, setError] = useState(message || "");
   const [busy, setBusy] = useState(false);
+  const [copyStatus, setCopyStatus] = useState("");
+
+  async function copyDemoCode() {
+    try {
+      if (!navigator.clipboard?.writeText) throw new Error("Clipboard unavailable");
+      await navigator.clipboard.writeText(publicDemoCode);
+      setCopyStatus("Copied");
+    } catch {
+      setCopyStatus("Could not copy. Select the code above to copy it manually.");
+    }
+  }
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
@@ -74,17 +86,28 @@ function AccessScreen({ unavailable, message, onUnlock }: { unavailable: boolean
         <p className="access-copy">
           {unavailable
             ? error || "The free service is temporarily unavailable. The source and walkthrough are still available."
-            : "This small access gate protects the project’s free AI quota. Use the code shared with the résumé link."}
+            : "This public portfolio demo is access-controlled to limit automated abuse and API usage."}
         </p>
         {!unavailable && (
-          <form className="access-form" onSubmit={submit}>
-            <label htmlFor="access-code">Demo access code</label>
-            <div className="access-input-row">
-              <input id="access-code" type="password" value={code} onChange={(event) => setCode(event.target.value)} placeholder="Enter access code" autoComplete="off" required />
-              <button disabled={busy || !code}>{busy ? "Checking…" : "Enter lab"}</button>
+          <>
+            <div className="demo-access-panel" role="group" aria-labelledby="demo-access-title">
+              <h2 id="demo-access-title">Portfolio Demo Access</h2>
+              <p>Use this public code to enter the live demo.</p>
+              <div className="demo-code-row">
+                <code>{publicDemoCode}</code>
+                <button type="button" onClick={copyDemoCode} aria-label="Copy demo access code">Copy</button>
+              </div>
+              <span className="copy-status" role="status" aria-live="polite">{copyStatus}</span>
             </div>
-            {error && <p className="form-error" role="alert">{error}</p>}
-          </form>
+            <form className="access-form" onSubmit={submit}>
+              <label htmlFor="access-code">Demo access code</label>
+              <div className="access-input-row">
+                <input id="access-code" type="password" value={code} onChange={(event) => setCode(event.target.value)} placeholder="Enter access code" autoComplete="off" required />
+                <button disabled={busy || !code}>{busy ? "Checking…" : "Enter lab"}</button>
+              </div>
+              {error && <p className="form-error" role="alert">{error}</p>}
+            </form>
+          </>
         )}
         <ResourceLinks />
         <p className="privacy-note">Do not upload confidential information. Free-tier Gemini submissions may be used by Google to improve its products.</p>
