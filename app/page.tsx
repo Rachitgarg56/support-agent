@@ -5,6 +5,8 @@ import { useChat } from "@ai-sdk/react";
 import { createClient } from "@supabase/supabase-js";
 import { DefaultChatTransport } from "ai";
 
+import { AnswerContent } from "@/components/answer-content";
+import { citedDocumentSources } from "@/lib/citations";
 import type {
   AppUIMessage,
   DemoLimits,
@@ -54,7 +56,7 @@ function ResourceLinks() {
 
 function AccessScreen({ unavailable, message, onUnlock }: { unavailable: boolean; message?: string; onUnlock: (code: string) => Promise<void> }) {
   const [code, setCode] = useState("");
-  const [error, setError] = useState(message || "");
+  const [error, setError] = useState(unavailable ? message || "" : "");
   const [busy, setBusy] = useState(false);
   const [copyStatus, setCopyStatus] = useState("");
 
@@ -68,50 +70,91 @@ function AccessScreen({ unavailable, message, onUnlock }: { unavailable: boolean
     }
   }
 
-  async function submit(event: React.FormEvent) {
-    event.preventDefault();
+  async function enterWithCode(value: string) {
+    if (busy) return;
     setBusy(true);
     setError("");
-    try { await onUnlock(code); } catch (caught) { setError(caught instanceof Error ? caught.message : "Access failed."); }
+    try { await onUnlock(value); } catch (caught) { setError(caught instanceof Error ? caught.message : "Access failed."); }
     finally { setBusy(false); }
+  }
+
+  async function submit(event: React.FormEvent) {
+    event.preventDefault();
+    await enterWithCode(code.trim());
   }
 
   return (
     <main className="access-page">
-      <div className="ambient ambient-one" /><div className="ambient ambient-two" />
-      <section className="access-card">
-        <div className="brand-mark"><Icon name={unavailable ? "refresh" : "lock"} /></div>
-        <p className="eyebrow">PORTFOLIO LAB · LIVE DEMO</p>
-        <h1>{unavailable ? "The lab is resting." : "Enter the document lab."}</h1>
-        <p className="access-copy">
-          {unavailable
-            ? error || "The free service is temporarily unavailable. The source and walkthrough are still available."
-            : "This public portfolio demo is access-controlled to limit automated abuse and API usage."}
-        </p>
-        {!unavailable && (
-          <>
-            <div className="demo-access-panel" role="group" aria-labelledby="demo-access-title">
-              <h2 id="demo-access-title">Portfolio Demo Access</h2>
-              <p>Use this public code to enter the live demo.</p>
-              <div className="demo-code-row">
-                <code>{publicDemoCode}</code>
-                <button type="button" onClick={copyDemoCode} aria-label="Copy demo access code">Copy</button>
-              </div>
-              <span className="copy-status" role="status" aria-live="polite">{copyStatus}</span>
+      <div className="access-shell">
+        <section className="access-story" aria-labelledby="access-story-title">
+          <div className="access-brand">
+            <span className="access-brand-icon"><Icon name="spark" /></span>
+            <span className="access-brand-name">Papertrail</span>
+            <span className="access-brand-label">DOCUMENT INTELLIGENCE</span>
+          </div>
+          <div className="access-story-content">
+            <p className="access-kicker">YOUR KNOWLEDGE, IN CONTEXT</p>
+            <h1 id="access-story-title">Answers you can trace back to the source.</h1>
+            <p className="access-story-copy">Upload a document, ask what matters, and explore the evidence behind each answer.</p>
+          </div>
+          <ul className="access-features" aria-label="What Papertrail does">
+            <li><span>01</span><div><strong>Bring your documents</strong><small>PDF, text, and Markdown files</small></div></li>
+            <li><span>02</span><div><strong>Ask naturally</strong><small>Find answers across your sources</small></div></li>
+            <li><span>03</span><div><strong>Follow the evidence</strong><small>Review the citations behind each answer</small></div></li>
+          </ul>
+        </section>
+
+        <section className="access-entry" aria-labelledby="access-entry-title">
+          <div className="access-entry-inner">
+            <p className="access-status"><span aria-hidden="true" /> {unavailable ? "DEMO STATUS" : "PUBLIC PORTFOLIO DEMO"}</p>
+            <h2 id="access-entry-title">{unavailable ? "The demo is resting." : "Explore Papertrail"}</h2>
+            <p className="access-entry-copy">
+              {unavailable
+                ? error || "The live demo is temporarily unavailable. The source code and recorded walkthrough are still available."
+                : "Use the public access code below to try the live document workspace."}
+            </p>
+
+            {!unavailable && (
+              <>
+                <div className="demo-access-panel" role="group" aria-labelledby="demo-access-title">
+                  <div className="demo-access-heading">
+                    <span id="demo-access-title">Demo access code</span>
+                    <span className="demo-access-badge">PUBLIC</span>
+                  </div>
+                  <div className="demo-code-row">
+                    <code>{publicDemoCode}</code>
+                    <button type="button" onClick={copyDemoCode} aria-label="Copy demo access code">Copy</button>
+                  </div>
+                  <span className="copy-status" role="status" aria-live="polite">{copyStatus}</span>
+                </div>
+
+                <button className="access-primary" type="button" onClick={() => void enterWithCode(publicDemoCode)} disabled={busy}>
+                  <span>{busy ? "Opening demo…" : "Enter demo"}</span>
+                  <span aria-hidden="true">→</span>
+                </button>
+
+                <details className="access-manual">
+                  <summary>Enter a code manually</summary>
+                  <form className="access-form" onSubmit={submit}>
+                    <label htmlFor="access-code">Access code</label>
+                    <div className="access-input-row">
+                      <input id="access-code" type="password" value={code} onChange={(event) => setCode(event.target.value)} placeholder="Enter access code" autoComplete="off" required disabled={busy} />
+                      <button type="submit" disabled={busy || !code.trim()}>{busy ? "Checking…" : "Continue"}</button>
+                    </div>
+                  </form>
+                </details>
+
+                {error && <p className="form-error" role="alert">{error}</p>}
+              </>
+            )}
+
+            <div className="access-meta">
+              <ResourceLinks />
+              <p className="access-privacy">Do not upload confidential information. Free-tier Gemini submissions may be used by Google to improve its products.</p>
             </div>
-            <form className="access-form" onSubmit={submit}>
-              <label htmlFor="access-code">Demo access code</label>
-              <div className="access-input-row">
-                <input id="access-code" type="password" value={code} onChange={(event) => setCode(event.target.value)} placeholder="Enter access code" autoComplete="off" required />
-                <button disabled={busy || !code}>{busy ? "Checking…" : "Enter lab"}</button>
-              </div>
-              {error && <p className="form-error" role="alert">{error}</p>}
-            </form>
-          </>
-        )}
-        <ResourceLinks />
-        <p className="privacy-note">Do not upload confidential information. Free-tier Gemini submissions may be used by Google to improve its products.</p>
-      </section>
+          </div>
+        </section>
+      </div>
     </main>
   );
 }
@@ -121,22 +164,62 @@ function DocumentPanel({ documents, limits, busy, onUpload, onDelete, onRetry, o
   limits: DemoLimits;
   busy: boolean;
   onUpload: (files: File[]) => void;
-  onDelete: (id: string) => void;
+  onDelete: (id: string) => Promise<void>;
   onRetry: (id: string) => void;
-  onClear: () => void;
+  onClear: () => Promise<void>;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
+  const dialogRef = useRef<HTMLDialogElement>(null);
+  const cancelRef = useRef<HTMLButtonElement>(null);
+  const headingRef = useRef<HTMLHeadingElement>(null);
+  const triggerRef = useRef<HTMLButtonElement | null>(null);
   const [dragging, setDragging] = useState(false);
+  const [pendingDelete, setPendingDelete] = useState<{ kind: "document"; id: string; name: string } | { kind: "workspace"; count: number } | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const sizeMb = Math.floor(limits.maxFileBytes / 1024 / 1024);
+
+  useEffect(() => {
+    if (pendingDelete && !dialogRef.current?.open) {
+      dialogRef.current?.showModal();
+      cancelRef.current?.focus();
+    }
+  }, [pendingDelete]);
 
   function select(files: FileList | null) {
     if (files?.length) onUpload(Array.from(files));
   }
 
+  function requestDelete(target: NonNullable<typeof pendingDelete>, trigger: HTMLButtonElement) {
+    triggerRef.current = trigger;
+    setPendingDelete(target);
+  }
+
+  function handleDialogClose() {
+    setPendingDelete(null);
+    const trigger = triggerRef.current;
+    triggerRef.current = null;
+    requestAnimationFrame(() => {
+      if (trigger?.isConnected && !trigger.disabled) trigger.focus();
+      else headingRef.current?.focus();
+    });
+  }
+
+  async function confirmDelete() {
+    if (!pendingDelete || deleting) return;
+    setDeleting(true);
+    try {
+      if (pendingDelete.kind === "document") await onDelete(pendingDelete.id);
+      else await onClear();
+    } finally {
+      setDeleting(false);
+      dialogRef.current?.close();
+    }
+  }
+
   return (
     <aside className="document-panel">
       <div className="panel-heading">
-        <div><p className="eyebrow">KNOWLEDGE</p><h2>Your documents</h2></div>
+        <div><p className="eyebrow">KNOWLEDGE</p><h2 ref={headingRef} tabIndex={-1}>Your documents</h2></div>
         <span className="count-pill">{documents.length}/{limits.maxFiles}</span>
       </div>
       <button
@@ -168,12 +251,39 @@ function DocumentPanel({ documents, limits, busy, onUpload, onDelete, onRetry, o
             </div>
             <span className={`status-dot ${document.status}`} title={document.status} />
             {document.status === "failed" && <button className="icon-button retry" aria-label={`Retry ${document.name}`} onClick={() => onRetry(document.id)}><Icon name="refresh" /></button>}
-            <button className="icon-button" aria-label={`Delete ${document.name}`} onClick={() => onDelete(document.id)}><Icon name="trash" /></button>
+            <button className="icon-button" type="button" aria-label={`Delete ${document.name}`} onClick={(event) => requestDelete({ kind: "document", id: document.id, name: document.name }, event.currentTarget)}><Icon name="trash" /></button>
           </article>
         ))}
       </div>
-      {documents.length > 0 && <button className="clear-button" onClick={onClear}>Clear workspace</button>}
+      {documents.length > 0 && <button className="clear-button" type="button" onClick={(event) => requestDelete({ kind: "workspace", count: documents.length }, event.currentTarget)}>Clear workspace</button>}
       <div className="sidebar-foot"><span><i className="pulse" /> Anonymous workspace</span><small>Expires after 30 inactive days</small></div>
+      <dialog
+        ref={dialogRef}
+        className="delete-dialog"
+        aria-labelledby="delete-dialog-title"
+        aria-describedby="delete-dialog-description"
+        onClose={handleDialogClose}
+        onCancel={(event) => { if (deleting) event.preventDefault(); }}
+      >
+        <div className="delete-dialog-content">
+          <span className="delete-dialog-icon"><Icon name="trash" /></span>
+          <p className="delete-dialog-eyebrow">PERMANENT ACTION</p>
+          <h2 id="delete-dialog-title">{pendingDelete?.kind === "document" ? "Delete document?" : "Clear workspace?"}</h2>
+          <p id="delete-dialog-description">
+            {pendingDelete?.kind === "document" ? (
+              <>This removes <strong>{pendingDelete.name}</strong> and its searchable chunks from this workspace. This cannot be undone.</>
+            ) : (
+              <>This removes all {pendingDelete?.kind === "workspace" ? pendingDelete.count : 0} uploaded {pendingDelete?.kind === "workspace" && pendingDelete.count === 1 ? "document" : "documents"} and their searchable chunks. A new empty workspace will be created. This cannot be undone.</>
+            )}
+          </p>
+          <div className="delete-dialog-actions">
+            <button ref={cancelRef} type="button" className="delete-dialog-cancel" disabled={deleting} onClick={() => dialogRef.current?.close()}>Cancel</button>
+            <button type="button" className="delete-dialog-confirm" disabled={deleting} onClick={() => void confirmDelete()}>
+              {deleting ? "Deleting…" : pendingDelete?.kind === "document" ? "Delete document" : "Clear workspace"}
+            </button>
+          </div>
+        </div>
+      </dialog>
     </aside>
   );
 }
@@ -217,32 +327,40 @@ function ChatPanel({ hasReadyDocuments }: { hasReadyDocuments: boolean }) {
             </div>
           </div>
         )}
-        {messages.map((message) => (
-          <article className={`message ${message.role}`} key={message.id}>
-            <div className="message-label">{message.role === "user" ? "You" : "Papertrail"}</div>
-            <div className="message-body">
-              {message.parts.map((part, index) => {
-                if (part.type === "text") return <p key={index}>{part.text}</p>;
-                if (part.type === "data-citations") return (
-                  <div className="citations" key={index}>
-                    <span>Sources</span>
-                    {part.data.items.map((citation) => (
-                      <details key={citation.id}>
-                        <summary><b>[{citation.id}]</b> {citation.fileName}{citation.pageNumber ? ` · p. ${citation.pageNumber}` : ""}</summary>
-                        <p>{citation.excerpt}{citation.excerpt.length >= 240 ? "…" : ""}</p>
-                      </details>
-                    ))}
-                  </div>
-                );
-                if (part.type === "data-retrieval" && part.data.canSearchWeb) return (
-                  <button key={index} className="web-button" disabled={isStreaming} onClick={() => searchWeb(part.data.question)}><Icon name="web" /> Search the web instead</button>
-                );
-                if (part.type === "source-url") return <a className="web-source" key={index} href={part.url} target="_blank" rel="noreferrer">{part.title || part.url} ↗</a>;
-                return null;
-              })}
-            </div>
-          </article>
-        ))}
+        {messages.map((message, messageIndex) => {
+          const answer = message.parts.filter((part) => part.type === "text").map((part) => part.text).join("\n\n");
+          const availableCitations = message.parts.filter((part) => part.type === "data-citations").flatMap((part) => part.data.items);
+          const currentResponseIsStreaming = isStreaming && messageIndex === messages.length - 1;
+          const citedSources = currentResponseIsStreaming ? [] : citedDocumentSources(answer, availableCitations);
+          const webSources = message.parts.filter((part) => part.type === "source-url").filter((part, index, all) => all.findIndex((candidate) => candidate.url === part.url) === index);
+          const webFallback = message.parts.find((part) => part.type === "data-retrieval");
+
+          return (
+            <article className={`message ${message.role}`} key={message.id}>
+              <div className="message-label">{message.role === "user" ? "You" : "Papertrail"}</div>
+              <div className="message-body">
+                {message.role === "user" ? <p>{answer}</p> : (
+                  <>
+                    {answer && <AnswerContent text={answer} messageId={message.id} citationIds={citedSources.map((source) => source.id)} />}
+                    {citedSources.length > 0 && (
+                      <section className="citations" aria-label="Document sources">
+                        <span>Sources</span>
+                        {citedSources.map((citation) => (
+                          <details id={`source-${message.id}-${citation.id}`} key={citation.id}>
+                            <summary><b>[{citation.id}]</b> {citation.fileName}{citation.pageNumber ? ` · p. ${citation.pageNumber}` : ""}</summary>
+                            <p>{citation.excerpt}{citation.excerpt.length >= 240 ? "…" : ""}</p>
+                          </details>
+                        ))}
+                      </section>
+                    )}
+                    {webSources.length > 0 && <section className="web-sources" aria-label="Web sources"><span>Web sources</span>{webSources.map((part) => <a className="web-source" key={part.url} href={part.url} target="_blank" rel="noopener noreferrer">{part.title || part.url} ↗</a>)}</section>}
+                    {webFallback?.data.canSearchWeb && <button className="web-button" disabled={isStreaming} onClick={() => searchWeb(webFallback.data.question)}><Icon name="web" /> Search the web instead</button>}
+                  </>
+                )}
+              </div>
+            </article>
+          );
+        })}
         {isStreaming && <div className="thinking"><i /><i /><i /><span>{status === "submitted" ? "Searching your documents" : "Writing a grounded answer"}</span></div>}
         {error && <div className="chat-error" role="alert">{error.message.includes("429") ? "The free demo quota is exhausted for today. Please view the recorded walkthrough." : error.message}</div>}
       </div>
@@ -263,6 +381,7 @@ export default function Home() {
   const [workspace, setWorkspace] = useState<WorkspaceResponse | null>(null);
   const [documents, setDocuments] = useState<DocumentSummary[]>([]);
   const [uploading, setUploading] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
   const [notice, setNotice] = useState("");
 
   const initialize = useCallback(async () => {
@@ -352,9 +471,24 @@ export default function Home() {
   }
 
   async function clearWorkspace() {
-    if (!confirm("Delete every document in this workspace?")) return;
     try { await readResponse(await fetch("/api/workspace", { method: "DELETE" })); setDocuments([]); await initialize(); }
     catch (error) { setNotice(error instanceof Error ? error.message : "Could not clear the workspace."); }
+  }
+
+  async function logout() {
+    setLoggingOut(true);
+    setNotice("");
+    try {
+      await readResponse(await fetch("/api/demo-access", { method: "DELETE" }));
+      setWorkspace(null);
+      setDocuments([]);
+      setUploading(false);
+      setStage("access");
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : "Could not log out.");
+    } finally {
+      setLoggingOut(false);
+    }
   }
 
   if (stage === "loading") return <main className="loading-page"><span className="orb"><Icon name="spark" /></span><p>Opening the document lab…</p></main>;
@@ -365,7 +499,13 @@ export default function Home() {
     <main className="app-shell">
       <nav className="topbar">
         <div className="wordmark"><span><Icon name="spark" /></span><b>Papertrail</b><em>RAG LAB</em></div>
-        <div className="topbar-right"><ResourceLinks /><span className="free-chip">FREE-TIER SAFE</span></div>
+        <div className="topbar-right">
+          <ResourceLinks />
+          <span className="free-chip">FREE-TIER SAFE</span>
+          <button className="logout-button" type="button" onClick={logout} disabled={loggingOut} aria-label={loggingOut ? "Logging out" : "Log out"}>
+            {loggingOut ? "Logging out…" : "Log out"}
+          </button>
+        </div>
       </nav>
       {notice && <div className="notice" role="alert"><span>{notice}</span><button onClick={() => setNotice("")}>×</button></div>}
       <div className="workspace-grid">

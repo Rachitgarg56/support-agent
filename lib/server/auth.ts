@@ -36,6 +36,10 @@ export async function issueDemoAccessCookie() {
   });
 }
 
+export async function expireDemoAccessCookie() {
+  (await cookies()).set(DEMO_COOKIE, "", { ...cookieOptions, maxAge: 0 });
+}
+
 export async function requireDemoAccess() {
   const env = getServerEnv();
   if (env.DEMO_ENABLED !== "true") {

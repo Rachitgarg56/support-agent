@@ -13,6 +13,7 @@ import { getWorkspace } from "@/lib/server/auth";
 import {
   buildGroundedRequest,
   latestQuestion,
+  selectRelevantMatches,
   type MatchRow,
 } from "@/lib/server/chat-grounding";
 import { getGoogleProvider, getSupabaseAdmin } from "@/lib/server/clients";
@@ -91,7 +92,7 @@ export async function POST(request: Request) {
       match_count: 6,
     });
     if (error) throw error;
-    const matches = (data || []) as MatchRow[];
+    const matches = selectRelevantMatches(question, (data || []) as MatchRow[]);
 
     if (!matches.length && !allowWebSearch) return fixedMessageStream(question);
 
@@ -121,7 +122,7 @@ export async function POST(request: Request) {
             stopWhen: stepCountIs(3),
             maxRetries: 0,
           });
-          writer.merge(result.toUIMessageStream({ sendSources: true }));
+          writer.merge(result.toUIMessageStream({ sendSources: true, sendStart: false }));
         },
         onError: () =>
           "The free AI quota may be temporarily exhausted. Please try again after the daily reset or view the recorded walkthrough.",
@@ -144,7 +145,7 @@ export async function POST(request: Request) {
           system: grounded.system,
           prompt: grounded.prompt,
         });
-        writer.merge(result.toUIMessageStream());
+        writer.merge(result.toUIMessageStream({ sendStart: false }));
       },
       onError: () =>
         "The free AI quota may be temporarily exhausted. Please try again after the daily reset or view the recorded walkthrough.",

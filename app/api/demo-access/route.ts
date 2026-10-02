@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-import { issueDemoAccessCookie } from "@/lib/server/auth";
+import { expireDemoAccessCookie, issueDemoAccessCookie } from "@/lib/server/auth";
 import { hashWithSalt, safeEqual } from "@/lib/server/crypto";
 import { getServerEnv } from "@/lib/server/env";
 import { ApiError, errorResponse } from "@/lib/server/errors";
@@ -24,6 +24,15 @@ export async function POST(request: Request) {
       throw new ApiError(401, "INVALID_ACCESS_CODE", "That access code is not valid.");
     }
     await issueDemoAccessCookie();
+    return NextResponse.json({ ok: true });
+  } catch (error) {
+    return errorResponse(error);
+  }
+}
+
+export async function DELETE() {
+  try {
+    await expireDemoAccessCookie();
     return NextResponse.json({ ok: true });
   } catch (error) {
     return errorResponse(error);
