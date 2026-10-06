@@ -89,7 +89,7 @@ test("opens the demo only after the primary button submits the public code", asy
   await expect(page.getByRole("heading", { name: "Explore Papertrail" })).toBeVisible();
   expect(accessSubmissions).toBe(0);
   await page.getByRole("button", { name: "Enter demo" }).click();
-  await expect(page.getByRole("heading", { name: "Ask your sources." })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Ask your documents." })).toBeVisible();
   expect(accessSubmissions).toBe(1);
 });
 
@@ -169,5 +169,5 @@ test("logs out without deleting the workspace and restores it after re-entry", a
   await page.getByText("Enter a code manually").click();
   await page.getByLabel("Access code", { exact: true }).fill(publicDemoCode);
   await page.getByRole("button", { name: "Continue" }).click();
-  await expect(page.getByRole("heading", { name: "Ask your sources." })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Ask your documents." })).toBeVisible();
 });

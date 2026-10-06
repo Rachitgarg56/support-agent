@@ -30,40 +30,38 @@ export async function POST(request: Request) {
     validateFileSize(input.size);
 
     const supabase = getSupabaseAdmin();
-    const { count, error: countError } = await supabase
-      .from("documents")
-      .select("id", { count: "exact", head: true })
-      .eq("workspace_id", workspace.id);
-    if (countError) throw countError;
-    if ((count || 0) >= demoLimits.maxFiles) {
+    const documentId = randomUUID();
+    const storagePath = `${workspace.id}/${documentId}${extensionOf(name)}`;
+    const { data: reserved, error: reserveError } = await supabase.rpc("reserve_document_upload", {
+      p_workspace_id: workspace.id,
+      p_document_id: documentId,
+      p_name: name,
+      p_media_type: mediaType,
+      p_size_bytes: input.size,
+      p_storage_path: storagePath,
+      p_max_files: demoLimits.maxFiles,
+    });
+    if (reserveError) throw reserveError;
+    if (!reserved) {
       throw new ApiError(409, "FILE_LIMIT_REACHED", `This workspace can contain at most ${demoLimits.maxFiles} active files.`);
     }
 
-    const documentId = randomUUID();
-    const storagePath = `${workspace.id}/${documentId}${extensionOf(name)}`;
-    const { error: insertError } = await supabase.from("documents").insert({
-      id: documentId,
-      workspace_id: workspace.id,
-      name,
-      media_type: mediaType,
-      size_bytes: input.size,
-      storage_path: storagePath,
-      status: "pending",
-    });
-    if (insertError) throw insertError;
-
-    const { data, error: signedUrlError } = await supabase.storage
-      .from(DOCUMENTS_BUCKET)
-      .createSignedUploadUrl(storagePath, { upsert: false });
-    if (signedUrlError || !data) {
-      await supabase.from("documents").delete().eq("id", documentId);
-      throw signedUrlError || new Error("Could not create upload URL");
+    let signedUpload: { path: string; token: string };
+    try {
+      const { data, error } = await supabase.storage
+        .from(DOCUMENTS_BUCKET)
+        .createSignedUploadUrl(storagePath, { upsert: false });
+      if (error || !data) throw error || new Error("Could not create upload URL");
+      signedUpload = data;
+    } catch (error) {
+      await supabase.from("documents").delete().eq("id", documentId).eq("workspace_id", workspace.id).eq("status", "pending");
+      throw error;
     }
 
     return NextResponse.json({
       documentId,
-      path: data.path,
-      token: data.token,
+      path: signedUpload.path,
+      token: signedUpload.token,
       bucket: DOCUMENTS_BUCKET,
       mediaType,
     });

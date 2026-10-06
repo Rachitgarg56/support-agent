@@ -21,6 +21,14 @@ describe("database isolation contract", () => {
     expect(sql).toContain("ip_count >= p_ip_limit");
   });
 
+  it("serializes file reservations before counting and inserting", () => {
+    const reservation = sql.slice(sql.indexOf("create or replace function public.reserve_document_upload"));
+    expect(reservation).toContain("for update");
+    expect(reservation.indexOf("for update")).toBeLessThan(reservation.indexOf("select count(*) into file_count"));
+    expect(reservation.indexOf("file_count >= p_max_files")).toBeLessThan(reservation.indexOf("insert into public.documents"));
+    expect(reservation).toContain("grant execute on function public.reserve_document_upload(uuid, uuid, text, text, bigint, text, integer) to service_role");
+  });
+
   it("denies browser roles direct table access", () => {
     expect(sql).toContain("from anon, authenticated");
     expect(sql).toContain("alter table public.document_chunks enable row level security");

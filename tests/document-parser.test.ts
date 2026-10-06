@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   chunkPages,
+  extractDocument,
   extensionOf,
   normalizeMediaType,
   sanitizeFileName,
@@ -23,6 +24,12 @@ describe("document validation", () => {
 
   it("removes path separators from display names", () => {
     expect(sanitizeFileName("../private\\notes.txt")).toBe(".._private_notes.txt");
+  });
+
+  it("rejects corrupt PDFs, binary text, and empty documents before embedding", async () => {
+    await expect(extractDocument(new TextEncoder().encode("not really a pdf"), "fake.pdf", "application/pdf")).rejects.toThrow("PDF signature");
+    await expect(extractDocument(new Uint8Array([65, 0, 66]), "binary.txt", "text/plain")).rejects.toThrow("Binary data");
+    await expect(extractDocument(new TextEncoder().encode("  \n  "), "empty.md", "text/markdown")).rejects.toThrow("readable text");
   });
 });
 

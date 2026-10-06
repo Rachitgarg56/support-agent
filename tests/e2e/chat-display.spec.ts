@@ -16,7 +16,7 @@ async function openChat(page: Page) {
     body: JSON.stringify({ documents: [{ id: "doc-1", name: "guide.pdf", mediaType: "application/pdf", sizeBytes: 2048, status: "ready", chunkCount: 4, createdAt: "2026-01-01T00:00:00Z" }] }),
   }));
   await page.goto("/");
-  await expect(page.getByRole("heading", { name: "Ask your sources." })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Ask your documents." })).toBeVisible();
 }
 
 async function fulfillChat(route: Route, kind: "document" | "missing" | "web") {
@@ -28,7 +28,7 @@ async function fulfillChat(route: Route, kind: "document" | "missing" | "web") {
           { id: "2", type: "document", documentId: "doc-1", fileName: "guide.pdf", pageNumber: 2, excerpt: "Data retention and deletion policy.", similarity: 0.7 },
         ] } });
       }
-      writer.write({ type: "data-retrieval", data: { status: kind === "missing" ? "no_match" : kind === "web" ? "web" : "matched", canSearchWeb: kind === "missing", question: "What is the starter limit?" } });
+      writer.write({ type: "data-retrieval", data: { status: kind === "missing" ? "no_match" : kind === "web" ? "web" : "matched", canSearchWeb: kind !== "web", question: "What is the starter limit?" } });
       writer.write({ type: "text-start", id: "answer" });
       writer.write({ type: "text-delta", id: "answer", delta: kind === "document" ? "**Starter** workspaces allow 1,000 API requests per hour [1].\n\n- Limits reset hourly." : kind === "missing" ? "Not found in your documents." : "The current information is on the web." });
       writer.write({ type: "text-end", id: "answer" });
@@ -63,16 +63,17 @@ for (const width of [1440, 375, 320]) {
   });
 }
 
-test("shows the web fallback and its links only after explicit search", async ({ page }) => {
+test("offers explicit web search after a document answer with insufficient evidence", async ({ page }) => {
   let webRequests = 0;
   await page.route("**/api/chat", async (route) => {
-    const kind = route.request().postDataJSON().allowWebSearch ? "web" : "missing";
+    const kind = route.request().postDataJSON().allowWebSearch ? "web" : "document";
     if (kind === "web") webRequests += 1;
     await fulfillChat(route, kind);
   });
   await openChat(page);
   await page.getByPlaceholder("Ask a question about your documents…").fill("What is the starter limit?");
   await page.getByRole("button", { name: "Send message" }).click();
+  await expect(page.locator(".citations details")).toHaveCount(1);
   await expect(page.getByRole("button", { name: "Search the web instead" })).toBeVisible();
   expect(webRequests).toBe(0);
   await page.getByRole("button", { name: "Search the web instead" }).click();
@@ -80,4 +81,20 @@ test("shows the web fallback and its links only after explicit search", async ({
   await expect(page.locator(".web-sources")).toHaveCount(1);
   await expect(page.getByRole("link", { name: /Current limits/ })).toHaveAttribute("href", "https://example.com/limits");
   expect(webRequests).toBe(1);
+});
+
+test("web fallback is keyboard-usable without mobile overflow", async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 720 });
+  await page.route("**/api/chat", async (route) => {
+    await fulfillChat(route, route.request().postDataJSON().allowWebSearch ? "web" : "document");
+  });
+  await openChat(page);
+  await page.locator(".composer textarea").fill("What is the starter limit?");
+  await page.locator(".composer textarea").press("Enter");
+  const fallback = page.getByRole("button", { name: "Search the web instead" });
+  await expect(fallback).toBeVisible();
+  await fallback.focus();
+  await page.keyboard.press("Enter");
+  await expect(page.locator(".web-sources")).toHaveCount(1);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(320);
 });

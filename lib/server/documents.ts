@@ -56,13 +56,42 @@ export async function getDocument(documentId: string, workspaceId: string) {
   return data as DocumentRow;
 }
 
+export async function claimDocumentProcessing(documentId: string, workspaceId: string) {
+  const existing = await getDocument(documentId, workspaceId);
+  if (existing.status === "ready" || existing.status === "processing") {
+    return { document: existing, claimed: false };
+  }
+  const { data, error } = await getSupabaseAdmin()
+    .from("documents")
+    .update({ status: "processing", error: null, updated_at: new Date().toISOString() })
+    .eq("id", documentId)
+    .eq("workspace_id", workspaceId)
+    .in("status", ["pending", "uploaded", "failed"])
+    .select("id, workspace_id, name, media_type, size_bytes, storage_path, status, error, chunk_count, created_at")
+    .maybeSingle();
+  if (error) throw error;
+  return data
+    ? { document: data as DocumentRow, claimed: true }
+    : { document: await getDocument(documentId, workspaceId), claimed: false };
+}
+
+export async function failDocumentProcessing(documentId: string, workspaceId: string, message: string) {
+  const { error } = await getSupabaseAdmin()
+    .from("documents")
+    .update({ status: "failed", error: message, updated_at: new Date().toISOString() })
+    .eq("id", documentId)
+    .eq("workspace_id", workspaceId)
+    .eq("status", "processing");
+  if (error) throw error;
+}
+
 export async function deleteDocument(documentId: string, workspaceId: string) {
   const document = await getDocument(documentId, workspaceId);
   const supabase = getSupabaseAdmin();
   const { error: storageError } = await supabase.storage
     .from(DOCUMENTS_BUCKET)
     .remove([document.storage_path]);
-  if (storageError) console.warn("Could not remove storage object", storageError.message);
+  if (storageError) throw storageError;
   const { error } = await supabase
     .from("documents")
     .delete()
@@ -82,18 +111,10 @@ export async function removeWorkspaceStorage(workspaceId: string) {
   }
 }
 
-export async function processDocument(documentId: string, workspaceId: string) {
-  const document = await getDocument(documentId, workspaceId);
-  if (document.status === "ready") return toDocumentSummary(document);
-
+export async function processDocument(document: DocumentRow) {
+  const workspaceId = document.workspace_id;
+  if (document.status !== "processing") throw new Error("Document must be claimed before processing.");
   const supabase = getSupabaseAdmin();
-  const { error: statusError } = await supabase
-    .from("documents")
-    .update({ status: "processing", error: null, updated_at: new Date().toISOString() })
-    .eq("id", document.id)
-    .eq("workspace_id", workspaceId);
-  if (statusError) throw statusError;
-
   try {
     const { data: file, error: downloadError } = await supabase.storage
       .from(DOCUMENTS_BUCKET)
@@ -158,13 +179,23 @@ export async function processDocument(documentId: string, workspaceId: string) {
     if (updateError) throw updateError;
     return toDocumentSummary(ready as DocumentRow);
   } catch (error) {
-    const message = safeErrorMessage(error);
+    const providerQuota = error instanceof Error && (
+      ("statusCode" in error && error.statusCode === 429) ||
+      ("status" in error && error.status === 429) ||
+      error.message.includes("RESOURCE_EXHAUSTED")
+    );
+    const message = providerQuota
+      ? "The free AI provider quota is exhausted. Try again after its daily reset or view the recorded walkthrough."
+      : safeErrorMessage(error);
     await supabase.from("document_chunks").delete().eq("document_id", document.id);
     await supabase
       .from("documents")
       .update({ status: "failed", error: message, chunk_count: 0, updated_at: new Date().toISOString() })
       .eq("id", document.id)
       .eq("workspace_id", workspaceId);
+    if (providerQuota) {
+      throw new ApiError(429, "PROVIDER_QUOTA_REACHED", message);
+    }
     throw new ApiError(422, "PROCESSING_FAILED", message);
   }
 }

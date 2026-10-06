@@ -32,20 +32,32 @@ export async function GET(request: Request) {
       if (deleteError) throw deleteError;
     }
 
+    // The processing route has a 60-second budget; preserve timed-out files for retry.
+    const stalledBefore = new Date(now.getTime() - 5 * 60 * 1000).toISOString();
+    const { data: recovered, error: recoveryError } = await supabase
+      .from("documents")
+      .update({ status: "failed", error: "Processing timed out. Please retry.", updated_at: now.toISOString() })
+      .eq("status", "processing")
+      .lt("updated_at", stalledBefore)
+      .select("id");
+    if (recoveryError) throw recoveryError;
+
     const abandonedBefore = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString();
     const { data: abandoned, error: abandonedError } = await supabase
       .from("documents")
       .select("id, workspace_id, storage_path")
-      .in("status", ["pending", "uploaded", "processing"])
+      .in("status", ["pending", "uploaded"])
       .lt("updated_at", abandonedBefore)
       .limit(100);
     if (abandonedError) throw abandonedError;
     if (abandoned?.length) {
-      await supabase.storage.from("documents").remove(abandoned.map((item) => item.storage_path));
-      await supabase.from("documents").delete().in("id", abandoned.map((item) => item.id));
+      const { error: storageError } = await supabase.storage.from("documents").remove(abandoned.map((item) => item.storage_path));
+      if (storageError) throw storageError;
+      const { error: deleteError } = await supabase.from("documents").delete().in("id", abandoned.map((item) => item.id));
+      if (deleteError) throw deleteError;
     }
     await supabase.from("usage_counters").delete().lt("usage_date", new Date(now.getTime() - 7 * 86400000).toISOString().slice(0, 10));
-    return NextResponse.json({ expiredWorkspaces: expired?.length || 0, abandonedUploads: abandoned?.length || 0 });
+    return NextResponse.json({ expiredWorkspaces: expired?.length || 0, abandonedUploads: abandoned?.length || 0, recoveredProcessing: recovered?.length || 0 });
   } catch (error) {
     return errorResponse(error);
   }

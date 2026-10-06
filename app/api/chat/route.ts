@@ -79,24 +79,7 @@ export async function POST(request: Request) {
       ipLimit: demoLimits.questionsPerIpPerDay,
     });
 
-    const { embedding } = await embed({
-      model: getGoogleProvider().embeddingModel(EMBEDDING_MODEL),
-      value: question,
-      maxRetries: 0,
-      providerOptions: { google: { outputDimensionality: EMBEDDING_DIMENSIONS } },
-    });
-    const { data, error } = await supabase.rpc("match_document_chunks", {
-      p_workspace_id: workspace.id,
-      query_embedding: embedding,
-      match_threshold: 0.5,
-      match_count: 6,
-    });
-    if (error) throw error;
-    const matches = selectRelevantMatches(question, (data || []) as MatchRow[]);
-
-    if (!matches.length && !allowWebSearch) return fixedMessageStream(question);
-
-    if (!matches.length) {
+    if (allowWebSearch) {
       await consumeDemoQuota({
         action: "web_search",
         workspaceId: workspace.id,
@@ -130,6 +113,23 @@ export async function POST(request: Request) {
       return createUIMessageStreamResponse({ stream });
     }
 
+    const { embedding } = await embed({
+      model: getGoogleProvider().embeddingModel(EMBEDDING_MODEL),
+      value: question,
+      maxRetries: 0,
+      providerOptions: { google: { outputDimensionality: EMBEDDING_DIMENSIONS } },
+    });
+    const { data, error } = await supabase.rpc("match_document_chunks", {
+      p_workspace_id: workspace.id,
+      query_embedding: embedding,
+      match_threshold: 0.5,
+      match_count: 6,
+    });
+    if (error) throw error;
+    const matches = selectRelevantMatches(question, (data || []) as MatchRow[]);
+
+    if (!matches.length) return fixedMessageStream(question);
+
     const grounded = buildGroundedRequest(question, matches);
 
     const stream = createUIMessageStream<AppUIMessage>({
@@ -137,7 +137,7 @@ export async function POST(request: Request) {
         writer.write({ type: "data-citations", data: { items: grounded.citations } });
         writer.write({
           type: "data-retrieval",
-          data: { status: "matched", canSearchWeb: false, question },
+          data: { status: "matched", canSearchWeb: true, question },
         });
         const result = streamText({
           model: getGoogleProvider()(ANSWERING_MODEL),

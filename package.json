@@ -11,6 +11,9 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
+    "eval:offline": "vitest run tests/eval-fixtures.test.ts tests/chat-grounding.test.ts tests/chat-route-stream.test.ts tests/citations.test.ts",
+    "eval:live": "node scripts/eval-live.mjs",
+    "eval:score": "node scripts/eval-score.mjs",
     "test:watch": "vitest",
     "test:e2e": "playwright test"
   },

@@ -69,7 +69,12 @@ async function openWorkspace(page: Page, options: { failDocumentDelete?: boolean
   });
 
   await page.goto("/");
-  await expect(page.getByRole("heading", { name: "Your documents", exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Ask your documents." })).toBeVisible();
+  if ((page.viewportSize()?.width ?? 1440) < 1024) {
+    const mobileToggle = page.getByRole("button", { name: "Show documents" });
+    await expect(mobileToggle).toBeVisible();
+    await mobileToggle.click();
+  }
   await expect(page.getByRole("button", { name: "Delete guide.pdf" })).toBeVisible();
   return state;
 }
@@ -103,7 +108,7 @@ test("document deletion requires confirmation, including failed documents", asyn
   await dialog.getByRole("button", { name: "Delete document" }).click();
   await expect(dialog).toBeHidden();
   await expect(trigger).toHaveCount(0);
-  await expect(page.getByRole("heading", { name: "Your documents", exact: true })).toBeFocused();
+  await expect(page.getByRole("heading", { name: "Documents", exact: true })).toBeFocused();
   expect(state.documentDeletes).toBe(1);
   expect(state.workspaceDeletes).toBe(0);
 });
@@ -129,7 +134,7 @@ test("clear workspace confirms on a narrow screen without overflow", async ({ pa
   await dialog.getByRole("button", { name: "Clear workspace" }).click();
   await expect(dialog).toBeHidden();
   await expect(page.getByRole("button", { name: "Delete guide.pdf" })).toHaveCount(0);
-  await expect(page.getByRole("heading", { name: "Your documents", exact: true })).toBeFocused();
+  await expect(page.getByRole("button", { name: "Hide documents" })).toBeFocused();
   expect(state.workspaceDeletes).toBe(1);
   expect(state.documentDeletes).toBe(0);
   expect(state.workspacePosts).toBe(2);

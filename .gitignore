@@ -4,6 +4,7 @@ node_modules/
 playwright-report/
 test-results/
 coverage/
+evals/results/
 *.tsbuildinfo
 
 # Environment variables

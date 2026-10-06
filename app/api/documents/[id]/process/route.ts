@@ -3,7 +3,7 @@ import { z } from "zod";
 
 import { demoLimits } from "@/lib/limits";
 import { getWorkspace } from "@/lib/server/auth";
-import { getDocument, processDocument, toDocumentSummary } from "@/lib/server/documents";
+import { claimDocumentProcessing, failDocumentProcessing, processDocument, toDocumentSummary } from "@/lib/server/documents";
 import { errorResponse } from "@/lib/server/errors";
 import { consumeDemoQuota, getHashedIp } from "@/lib/server/quota";
 
@@ -17,19 +17,24 @@ export async function POST(
   try {
     const workspace = await getWorkspace();
     const id = z.uuid().parse((await context.params).id);
-    const existing = await getDocument(id, workspace.id);
-    if (existing.status === "ready") {
-      return NextResponse.json({ document: toDocumentSummary(existing) });
+    const claim = await claimDocumentProcessing(id, workspace.id);
+    if (!claim.claimed) {
+      return NextResponse.json({ document: toDocumentSummary(claim.document) });
     }
-    await consumeDemoQuota({
-      action: "document_process",
-      workspaceId: workspace.id,
-      ipHash: getHashedIp(request.headers),
-      workspaceLimit: demoLimits.maxFiles,
-      globalLimit: demoLimits.globalDocumentsPerDay,
-      ipLimit: demoLimits.globalDocumentsPerDay,
-    });
-    return NextResponse.json({ document: await processDocument(id, workspace.id) });
+    try {
+      await consumeDemoQuota({
+        action: "document_process",
+        workspaceId: workspace.id,
+        ipHash: getHashedIp(request.headers),
+        workspaceLimit: demoLimits.maxFiles,
+        globalLimit: demoLimits.globalDocumentsPerDay,
+        ipLimit: demoLimits.globalDocumentsPerDay,
+      });
+    } catch (error) {
+      await failDocumentProcessing(id, workspace.id, "Processing quota unavailable. Retry when the daily quota resets.");
+      throw error;
+    }
+    return NextResponse.json({ document: await processDocument(claim.document) });
   } catch (error) {
     return errorResponse(error);
   }

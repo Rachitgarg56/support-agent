@@ -16,6 +16,7 @@ import type {
 
 type AppStage = "loading" | "access" | "workspace" | "unavailable";
 type ApiFailure = { error?: { code?: string; message?: string } };
+type UploadActivity = { name: string; phase: "uploading" | "processing" } | null;
 
 const repositoryUrl = process.env.NEXT_PUBLIC_REPOSITORY_URL || "https://github.com/Rachitgarg56/support-agent";
 const videoUrl = process.env.NEXT_PUBLIC_DEMO_VIDEO_URL || "#";
@@ -159,10 +160,11 @@ function AccessScreen({ unavailable, message, onUnlock }: { unavailable: boolean
   );
 }
 
-function DocumentPanel({ documents, limits, busy, onUpload, onDelete, onRetry, onClear }: {
+function DocumentPanel({ documents, limits, busy, activity, onUpload, onDelete, onRetry, onClear }: {
   documents: DocumentSummary[];
   limits: DemoLimits;
   busy: boolean;
+  activity: UploadActivity;
   onUpload: (files: File[]) => void;
   onDelete: (id: string) => Promise<void>;
   onRetry: (id: string) => void;
@@ -172,11 +174,16 @@ function DocumentPanel({ documents, limits, busy, onUpload, onDelete, onRetry, o
   const dialogRef = useRef<HTMLDialogElement>(null);
   const cancelRef = useRef<HTMLButtonElement>(null);
   const headingRef = useRef<HTMLHeadingElement>(null);
+  const mobileToggleRef = useRef<HTMLButtonElement>(null);
   const triggerRef = useRef<HTMLButtonElement | null>(null);
   const [dragging, setDragging] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<{ kind: "document"; id: string; name: string } | { kind: "workspace"; count: number } | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [mobileDetailsOverride, setMobileDetailsOverride] = useState<boolean | null>(null);
   const sizeMb = Math.floor(limits.maxFileBytes / 1024 / 1024);
+  const readyCount = documents.filter((document) => document.status === "ready").length;
+  const atCapacity = documents.length >= limits.maxFiles;
+  const mobileDetailsOpen = mobileDetailsOverride ?? readyCount === 0;
 
   useEffect(() => {
     if (pendingDelete && !dialogRef.current?.open) {
@@ -199,7 +206,8 @@ function DocumentPanel({ documents, limits, busy, onUpload, onDelete, onRetry, o
     const trigger = triggerRef.current;
     triggerRef.current = null;
     requestAnimationFrame(() => {
-      if (trigger?.isConnected && !trigger.disabled) trigger.focus();
+      if (trigger?.isConnected && trigger.getClientRects().length && !trigger.disabled) trigger.focus();
+      else if (mobileToggleRef.current?.getClientRects().length) mobileToggleRef.current.focus();
       else headingRef.current?.focus();
     });
   }
@@ -218,45 +226,77 @@ function DocumentPanel({ documents, limits, busy, onUpload, onDelete, onRetry, o
 
   return (
     <aside className="document-panel">
-      <div className="panel-heading">
-        <div><p className="eyebrow">KNOWLEDGE</p><h2 ref={headingRef} tabIndex={-1}>Your documents</h2></div>
-        <span className="count-pill">{documents.length}/{limits.maxFiles}</span>
+      <div className="mobile-document-bar">
+        <div className="mobile-document-summary">
+          <strong>Documents <span>{documents.length}/{limits.maxFiles}</span></strong>
+          <small aria-live="polite">{busy ? `${activity?.phase === "uploading" ? "Uploading" : "Processing"} ${activity?.name || "document"}…` : atCapacity ? "Remove a file to add another" : readyCount > 0 ? `${readyCount} ready · PDF, TXT or MD` : `PDF, TXT or MD · up to ${sizeMb} MB`}</small>
+        </div>
+        <div className="mobile-document-actions">
+          <button className="mobile-upload-button" type="button" disabled={busy || atCapacity} onClick={() => inputRef.current?.click()}>Add file</button>
+          <button
+            ref={mobileToggleRef}
+            className="mobile-document-toggle"
+            type="button"
+            aria-expanded={mobileDetailsOpen}
+            aria-controls="document-panel-details"
+            onClick={() => setMobileDetailsOverride(!mobileDetailsOpen)}
+          >
+            {mobileDetailsOpen ? "Hide documents" : "Show documents"}
+          </button>
+        </div>
       </div>
-      <button
-        type="button"
-        className={`drop-zone ${dragging ? "dragging" : ""}`}
-        disabled={busy || documents.length >= limits.maxFiles}
-        onClick={() => inputRef.current?.click()}
-        onDragOver={(event) => { event.preventDefault(); setDragging(true); }}
-        onDragLeave={() => setDragging(false)}
-        onDrop={(event) => { event.preventDefault(); setDragging(false); select(event.dataTransfer.files); }}
-      >
-        <span className="upload-icon"><Icon name="upload" /></span>
-        <strong>{busy ? "Processing document…" : "Drop files here"}</strong>
-        <span>or click to browse</span>
-        <small>PDF, TXT or MD · up to {sizeMb} MB</small>
-        <small className="upload-privacy"><Icon name="lock" /> Never upload confidential files</small>
-      </button>
-      <input ref={inputRef} hidden type="file" multiple accept=".pdf,.txt,.md,application/pdf,text/plain,text/markdown" onChange={(event) => { select(event.target.files); event.target.value = ""; }} />
+      <div id="document-panel-details" className={`document-panel-details ${mobileDetailsOpen ? "is-open" : ""}`}>
+        <div className="panel-heading">
+          <div><p className="eyebrow">YOUR KNOWLEDGE</p><h2 ref={headingRef} tabIndex={-1}>Documents</h2></div>
+          <span className="count-pill">{documents.length} / {limits.maxFiles}</span>
+        </div>
+        <p className="panel-description">Keep your source material together and trace every answer back to it.</p>
+        <button
+          type="button"
+          className={`drop-zone ${dragging ? "dragging" : ""}`}
+          disabled={busy || atCapacity}
+          onClick={() => inputRef.current?.click()}
+          onDragOver={(event) => { event.preventDefault(); setDragging(true); }}
+          onDragLeave={() => setDragging(false)}
+          onDrop={(event) => { event.preventDefault(); setDragging(false); if (!busy && !atCapacity) select(event.dataTransfer.files); }}
+        >
+          <span className="upload-icon"><Icon name="upload" /></span>
+          <strong>{atCapacity ? "Workspace is full" : busy ? activity?.phase === "uploading" ? "Uploading document…" : "Processing document…" : "Add documents"}</strong>
+          <span>{atCapacity ? "Remove a document to upload another" : busy ? activity?.name || "Please wait" : "Drag and drop or click to browse"}</span>
+          <small>PDF, TXT or MD · up to {sizeMb} MB each</small>
+          <small className="upload-privacy"><Icon name="lock" /> Never upload confidential files</small>
+        </button>
+        {atCapacity && <p className="file-capacity" role="status">You’ve reached the {limits.maxFiles}-document limit. Delete a document to make room.</p>}
 
-      <div className="document-list">
-        {!documents.length && <div className="empty-docs"><Icon name="file" /><p>Your uploaded sources will appear here.</p></div>}
-        {documents.map((document) => (
-          <article className="document-card" key={document.id}>
-            <span className="file-icon"><Icon name="file" /></span>
-            <div className="file-meta">
-              <strong title={document.name}>{document.name}</strong>
-              <span>{(document.sizeBytes / 1024).toFixed(0)} KB · {document.chunkCount ? `${document.chunkCount} chunks` : document.status}</span>
-              {document.error && <em>{document.error}</em>}
-            </div>
-            <span className={`status-dot ${document.status}`} title={document.status} />
-            {document.status === "failed" && <button className="icon-button retry" aria-label={`Retry ${document.name}`} onClick={() => onRetry(document.id)}><Icon name="refresh" /></button>}
-            <button className="icon-button" type="button" aria-label={`Delete ${document.name}`} onClick={(event) => requestDelete({ kind: "document", id: document.id, name: document.name }, event.currentTarget)}><Icon name="trash" /></button>
-          </article>
-        ))}
+        <div className="document-list" aria-live="polite">
+          {!documents.length && <div className="empty-docs"><Icon name="file" /><p>Your uploaded documents will appear here.</p></div>}
+          {documents.map((document) => {
+            const statusLabel = { pending: "Waiting", uploaded: "Uploaded", processing: "Processing", ready: "Ready", failed: "Failed" }[document.status];
+            return (
+              <article className="document-card" key={document.id} aria-label={`${document.name}, ${statusLabel}`}>
+                <span className="file-icon"><Icon name="file" /></span>
+                <div className="file-meta">
+                  <strong title={document.name}>{document.name}</strong>
+                  <span>{(document.sizeBytes / 1024).toFixed(0)} KB{document.chunkCount ? ` · ${document.chunkCount} ${document.chunkCount === 1 ? "chunk" : "chunks"}` : ""}</span>
+                  {document.error && <em>{document.error}</em>}
+                </div>
+                <span className={`status-badge ${document.status}`}>{statusLabel}</span>
+                <div className="document-actions">
+                  {document.status === "failed" && <button className="icon-button retry" type="button" aria-label={`Retry ${document.name}`} onClick={() => onRetry(document.id)}><Icon name="refresh" /></button>}
+                  <button className="icon-button" type="button" aria-label={`Delete ${document.name}`} onClick={(event) => requestDelete({ kind: "document", id: document.id, name: document.name }, event.currentTarget)}><Icon name="trash" /></button>
+                </div>
+              </article>
+            );
+          })}
+        </div>
+        {documents.length > 0 && <button className="clear-button" type="button" onClick={(event) => requestDelete({ kind: "workspace", count: documents.length }, event.currentTarget)}>Clear workspace</button>}
       </div>
-      {documents.length > 0 && <button className="clear-button" type="button" onClick={(event) => requestDelete({ kind: "workspace", count: documents.length }, event.currentTarget)}>Clear workspace</button>}
-      <div className="sidebar-foot"><span><i className="pulse" /> Anonymous workspace</span><small>Expires after 30 inactive days</small></div>
+      <input ref={inputRef} hidden type="file" multiple accept=".pdf,.txt,.md,application/pdf,text/plain,text/markdown" onChange={(event) => { select(event.target.files); event.target.value = ""; }} />
+      <div className="document-panel-footer">
+        <div className="sidebar-foot"><span><i className="pulse" /> Anonymous workspace</span><small>Documents expire after 30 inactive days</small></div>
+        <div className="privacy-note" role="note"><Icon name="lock" /><span>Public portfolio demo. Do not upload confidential files; free-tier Gemini submissions may be used by Google to improve its products.</span></div>
+        <div className="document-resource-links"><ResourceLinks /></div>
+      </div>
       <dialog
         ref={dialogRef}
         className="delete-dialog"
@@ -288,43 +328,42 @@ function DocumentPanel({ documents, limits, busy, onUpload, onDelete, onRetry, o
   );
 }
 
-function ChatPanel({ hasReadyDocuments }: { hasReadyDocuments: boolean }) {
+function ChatPanel({ readyCount }: { readyCount: number }) {
   const [input, setInput] = useState("");
-  const [lastQuestion, setLastQuestion] = useState("");
   const transport = useMemo(() => new DefaultChatTransport({ api: "/api/chat" }), []);
   const { messages, sendMessage, status, error, stop } = useChat<AppUIMessage>({ transport });
   const isStreaming = status === "submitted" || status === "streaming";
+  const hasReadyDocuments = readyCount > 0;
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
     const question = input.trim();
     if (!question || isStreaming || !hasReadyDocuments) return;
-    setInput(""); setLastQuestion(question);
+    setInput("");
     await sendMessage({ text: question }, { body: { allowWebSearch: false } });
   }
 
   async function searchWeb(question: string) {
-    setLastQuestion(question);
     await sendMessage({ text: question }, { body: { allowWebSearch: true } });
   }
 
   return (
     <section className="chat-panel">
       <header className="chat-header">
-        <div><p className="eyebrow">DOCUMENT INTELLIGENCE</p><h1>Ask your sources.</h1></div>
-        <div className="model-chip"><Icon name="spark" /><span>Gemini · grounded</span></div>
+        <div><p className="eyebrow">DOCUMENT Q&A</p><h1>Ask your documents.</h1><p className="workspace-context">{readyCount === 0 ? "Upload a document to get started" : `${readyCount} ${readyCount === 1 ? "document" : "documents"} ready for questions`}</p></div>
+        <div className="model-chip"><Icon name="spark" /><span>Answers with citations</span></div>
       </header>
 
       <div className="messages" aria-live="polite">
         {!messages.length && (
           <div className="chat-empty">
             <span className="orb"><Icon name="spark" /></span>
-            <h2>{hasReadyDocuments ? "Your documents are ready." : "Bring your own context."}</h2>
-            <p>{hasReadyDocuments ? "Ask a specific question and I’ll answer from the uploaded text, with citations." : "Upload a readable PDF, text file, or Markdown document to begin."}</p>
-            <div className="suggestions">
-              <button disabled={!hasReadyDocuments} onClick={() => setInput("Summarize the key ideas in these documents.")}>Summarize key ideas</button>
-              <button disabled={!hasReadyDocuments} onClick={() => setInput("What are the most important facts?")}>Find important facts</button>
-            </div>
+            <h2>{hasReadyDocuments ? "Ready when you are." : "Start with a document."}</h2>
+            <p>{hasReadyDocuments ? "Ask a specific question. Papertrail will answer from your documents and show the supporting passages." : "Add a readable PDF, text file, or Markdown document to begin asking grounded questions."}</p>
+            {hasReadyDocuments && <div className="suggestions">
+              <button type="button" onClick={() => setInput("Summarize the key ideas in these documents.")}>Summarize key ideas</button>
+              <button type="button" onClick={() => setInput("What are the most important facts?")}>Find important facts</button>
+            </div>}
           </div>
         )}
         {messages.map((message, messageIndex) => {
@@ -337,7 +376,7 @@ function ChatPanel({ hasReadyDocuments }: { hasReadyDocuments: boolean }) {
 
           return (
             <article className={`message ${message.role}`} key={message.id}>
-              <div className="message-label">{message.role === "user" ? "You" : "Papertrail"}</div>
+              <div className="message-label">{message.role === "user" ? "Your question" : "Papertrail answer"}</div>
               <div className="message-body">
                 {message.role === "user" ? <p>{answer}</p> : (
                   <>
@@ -361,16 +400,16 @@ function ChatPanel({ hasReadyDocuments }: { hasReadyDocuments: boolean }) {
             </article>
           );
         })}
-        {isStreaming && <div className="thinking"><i /><i /><i /><span>{status === "submitted" ? "Searching your documents" : "Writing a grounded answer"}</span></div>}
+        {isStreaming && <div className="thinking" role="status"><i /><i /><i /><span>{status === "submitted" ? "Searching your documents" : "Writing a grounded answer"}</span></div>}
         {error && <div className="chat-error" role="alert">{error.message.includes("429") ? "The free demo quota is exhausted for today. Please view the recorded walkthrough." : error.message}</div>}
       </div>
 
       <footer className="composer-wrap">
         <form className="composer" onSubmit={submit}>
-          <textarea value={input} onChange={(event) => setInput(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); event.currentTarget.form?.requestSubmit(); } }} placeholder={hasReadyDocuments ? "Ask a question about your documents…" : "Upload a document to start asking questions"} disabled={!hasReadyDocuments} maxLength={2000} rows={1} />
+          <textarea aria-label="Ask a question about your documents" value={input} onChange={(event) => setInput(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); event.currentTarget.form?.requestSubmit(); } }} placeholder={hasReadyDocuments ? "Ask a question about your documents…" : "Upload a document to start asking questions"} disabled={!hasReadyDocuments} maxLength={2000} rows={1} />
           <button type={isStreaming ? "button" : "submit"} onClick={isStreaming ? stop : undefined} disabled={!isStreaming && (!input.trim() || !hasReadyDocuments)} aria-label={isStreaming ? "Stop response" : "Send message"}>{isStreaming ? <span className="stop-icon" /> : <Icon name="send" />}</button>
         </form>
-        <div className="composer-meta"><span>Answers are grounded in retrieved excerpts.</span><span>{lastQuestion ? `${lastQuestion.length}/2000 last question` : "No chat history is stored"}</span></div>
+        <div className="composer-meta"><span>No chat history is stored</span><span>{input.length}/2000</span></div>
       </footer>
     </section>
   );
@@ -381,6 +420,8 @@ export default function Home() {
   const [workspace, setWorkspace] = useState<WorkspaceResponse | null>(null);
   const [documents, setDocuments] = useState<DocumentSummary[]>([]);
   const [uploading, setUploading] = useState(false);
+  const [uploadActivity, setUploadActivity] = useState<UploadActivity>(null);
+  const [chatSessionVersion, setChatSessionVersion] = useState(0);
   const [loggingOut, setLoggingOut] = useState(false);
   const [notice, setNotice] = useState("");
 
@@ -438,40 +479,59 @@ export default function Home() {
     try {
       const remaining = Math.max(0, workspace.limits.maxFiles - documents.length);
       for (const file of files.slice(0, remaining)) {
+        setUploadActivity({ name: file.name, phase: "uploading" });
         const upload = await readResponse<{ documentId: string; path: string; token: string; bucket: string; mediaType: string }>(await fetch("/api/documents/upload-url", {
           method: "POST", headers: { "content-type": "application/json" },
           body: JSON.stringify({ name: file.name, size: file.size, mediaType: file.type }),
         }));
-        const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-        const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-        if (!url || !key) throw new Error("Public Supabase upload configuration is missing.");
-        const client = createClient(url, key);
-        const { error } = await client.storage.from(upload.bucket).uploadToSignedUrl(upload.path, upload.token, file, { contentType: upload.mediaType });
-        if (error) throw error;
+        try {
+          const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+          const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+          if (!url || !key) throw new Error("Public Supabase upload configuration is missing.");
+          const client = createClient(url, key);
+          const { error } = await client.storage.from(upload.bucket).uploadToSignedUrl(upload.path, upload.token, file, { contentType: upload.mediaType });
+          if (error) throw error;
+        } catch (error) {
+          // A failed signed upload has no file to process; free its reserved slot.
+          await fetch(`/api/documents/${upload.documentId}`, { method: "DELETE" }).catch(() => undefined);
+          throw error;
+        }
         await refreshDocuments();
+        setUploadActivity({ name: file.name, phase: "processing" });
         await readResponse(await fetch(`/api/documents/${upload.documentId}/process`, { method: "POST" }));
         await refreshDocuments();
       }
     } catch (error) {
       setNotice(error instanceof Error ? error.message : "Upload failed.");
       await refreshDocuments().catch(() => undefined);
-    } finally { setUploading(false); }
+    } finally { setUploading(false); setUploadActivity(null); }
   }
 
   async function remove(id: string) {
-    try { await readResponse(await fetch(`/api/documents/${id}`, { method: "DELETE" })); await refreshDocuments(); }
+    try {
+      await readResponse(await fetch(`/api/documents/${id}`, { method: "DELETE" }));
+      setDocuments((current) => current.filter((document) => document.id !== id));
+      setChatSessionVersion((version) => version + 1);
+      await refreshDocuments();
+    }
     catch (error) { setNotice(error instanceof Error ? error.message : "Delete failed."); }
   }
 
   async function retry(id: string) {
     setUploading(true); setNotice("");
+    setUploadActivity({ name: documents.find((document) => document.id === id)?.name || "document", phase: "processing" });
     try { await readResponse(await fetch(`/api/documents/${id}/process`, { method: "POST" })); await refreshDocuments(); }
     catch (error) { setNotice(error instanceof Error ? error.message : "Retry failed."); await refreshDocuments().catch(() => undefined); }
-    finally { setUploading(false); }
+    finally { setUploading(false); setUploadActivity(null); }
   }
 
   async function clearWorkspace() {
-    try { await readResponse(await fetch("/api/workspace", { method: "DELETE" })); setDocuments([]); await initialize(); }
+    try {
+      await readResponse(await fetch("/api/workspace", { method: "DELETE" }));
+      setDocuments([]);
+      setChatSessionVersion((version) => version + 1);
+      await initialize();
+    }
     catch (error) { setNotice(error instanceof Error ? error.message : "Could not clear the workspace."); }
   }
 
@@ -483,6 +543,7 @@ export default function Home() {
       setWorkspace(null);
       setDocuments([]);
       setUploading(false);
+      setUploadActivity(null);
       setStage("access");
     } catch (error) {
       setNotice(error instanceof Error ? error.message : "Could not log out.");
@@ -498,21 +559,20 @@ export default function Home() {
   return (
     <main className="app-shell">
       <nav className="topbar">
-        <div className="wordmark"><span><Icon name="spark" /></span><b>Papertrail</b><em>RAG LAB</em></div>
+        <div className="wordmark"><span><Icon name="spark" /></span><b>Papertrail</b><em>DOCUMENT WORKSPACE</em></div>
         <div className="topbar-right">
           <ResourceLinks />
-          <span className="free-chip">FREE-TIER SAFE</span>
+          <span className="demo-chip">PORTFOLIO DEMO</span>
           <button className="logout-button" type="button" onClick={logout} disabled={loggingOut} aria-label={loggingOut ? "Logging out" : "Log out"}>
             {loggingOut ? "Logging out…" : "Log out"}
           </button>
         </div>
       </nav>
-      {notice && <div className="notice" role="alert"><span>{notice}</span><button onClick={() => setNotice("")}>×</button></div>}
+      {notice && <div className="notice" role="alert"><span>{notice}</span><button type="button" aria-label="Dismiss notice" onClick={() => setNotice("")}>×</button></div>}
       <div className="workspace-grid">
-        <DocumentPanel documents={documents} limits={workspace.limits} busy={uploading} onUpload={upload} onDelete={remove} onRetry={retry} onClear={clearWorkspace} />
-        <ChatPanel hasReadyDocuments={documents.some((document) => document.status === "ready")} />
+        <DocumentPanel documents={documents} limits={workspace.limits} busy={uploading} activity={uploadActivity} onUpload={upload} onDelete={remove} onRetry={retry} onClear={clearWorkspace} />
+        <ChatPanel key={`${workspace.workspaceId}:${chatSessionVersion}`} readyCount={documents.filter((document) => document.status === "ready").length} />
       </div>
-      <div className="global-privacy"><Icon name="lock" /><span>Public portfolio demo. Do not upload confidential files; free-tier Gemini submissions may be used by Google to improve its products.</span></div>
     </main>
   );
 }
